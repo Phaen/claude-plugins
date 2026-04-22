@@ -1,0 +1,13 @@
+{
+  "name": "relay",
+  "description": "Session continuity — hand off context between sessions to split tasks, coordinate work, or resume later.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Pablo Kebees",
+    "url": "https://github.com/Phaen"
+  },
+  "homepage": "https://github.com/Phaen/claude-plugins",
+  "repository": "https://github.com/Phaen/claude-plugins",
+  "license": "MIT",
+  "keywords": ["session", "handoff", "continuity", "context"]
+}

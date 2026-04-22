@@ -1,0 +1,23 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "Phaen",
+  "description": "Pablo Kebees' Claude Code plugins",
+  "owner": {
+    "name": "Pablo Kebees",
+    "url": "https://github.com/Phaen"
+  },
+  "plugins": [
+    {
+      "name": "solve",
+      "description": "Structured problem-solving with an explicit solution tree and real-time visualisation.",
+      "source": "./solve",
+      "category": "productivity"
+    },
+    {
+      "name": "relay",
+      "description": "Session continuity — hand off context between sessions to split tasks, coordinate work, or resume later.",
+      "source": "./relay",
+      "category": "productivity"
+    }
+  ]
+}
