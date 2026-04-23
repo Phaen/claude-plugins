@@ -20877,8 +20877,8 @@ function createSession() {
 }
 function loadOrCreate() {
   const existing = load();
-  if (!existing || existing.status !== "solving") return createSession();
-  return { error: "A solve is already in progress. Finish it (resolve or block all solutions) before starting a new one." };
+  if (existing && existing.status === "solving") return existing;
+  return createSession();
 }
 function isSettled(sol, nodes) {
   if (sol.status === "resolved" || sol.status === "failed") return true;
@@ -20935,9 +20935,7 @@ function toolSolveProblem({ text, id }) {
   if (!text) return fail("text is required.");
   let state;
   if (!id) {
-    const result = loadOrCreate();
-    if ("error" in result) return fail(result.error);
-    state = result;
+    state = loadOrCreate();
     state.root_problem = state.root_problem ? `${state.root_problem}
 ${text}` : text;
     save(state);
@@ -20971,9 +20969,7 @@ ${text}` : text;
 function toolSolveResearch({ findings, id }) {
   if (!findings) return fail("findings is required.");
   if (!id) {
-    const result = loadOrCreate();
-    if ("error" in result) return fail(result.error);
-    const state2 = result;
+    const state2 = loadOrCreate();
     state2.root_research = state2.root_research ? `${state2.root_research}
 ${findings}` : findings;
     save(state2);

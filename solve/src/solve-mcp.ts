@@ -62,13 +62,13 @@ function createSession(): SolveState {
 }
 
 /**
- * Load the current session, or create a new one if there is none (or the
- * previous one is already finished). Rejects if a solve is still in progress.
+ * Load the current session if it is still solving, or create a fresh one if
+ * there is none or the previous one is already finished.
  */
-function loadOrCreate(): SolveState | { error: string } {
+function loadOrCreate(): SolveState {
   const existing = load();
-  if (!existing || existing.status !== 'solving') return createSession();
-  return { error: 'A solve is already in progress. Finish it (resolve or block all solutions) before starting a new one.' };
+  if (existing && existing.status === 'solving') return existing;
+  return createSession();
 }
 
 // ── Tree renderer ──────────────────────────────────────────────────────────────
@@ -151,10 +151,8 @@ function toolSolveProblem({ text, id }: Args): string {
 
   let state: SolveState;
   if (!id) {
-    // Root problem declaration — auto-create session if needed
-    const result = loadOrCreate();
-    if ('error' in result) return fail(result.error);
-    state = result;
+    // Root problem declaration — resume or create session
+    state = loadOrCreate();
     state.root_problem = state.root_problem ? `${state.root_problem}\n${text}` : text;
     save(state);
     return ok('Root problem set.', state);
@@ -186,10 +184,8 @@ function toolSolveResearch({ findings, id }: Args): string {
   if (!findings) return fail('findings is required.');
 
   if (!id) {
-    // Root research — auto-create session if needed
-    const result = loadOrCreate();
-    if ('error' in result) return fail(result.error);
-    const state = result;
+    // Root research — resume or create session
+    const state = loadOrCreate();
     state.root_research = state.root_research
       ? `${state.root_research}\n${findings}` : findings;
     save(state);
