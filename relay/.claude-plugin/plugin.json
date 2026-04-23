@@ -9,5 +9,17 @@
   "homepage": "https://github.com/Phaen/claude-plugins",
   "repository": "https://github.com/Phaen/claude-plugins",
   "license": "MIT",
-  "keywords": ["session", "relay", "continuity", "context"]
+  "keywords": ["session", "relay", "continuity", "context"],
+  "skills": [
+    {
+      "name": "relay",
+      "description": "Create a relay summary to hand off context to another session",
+      "path": "commands/relay.md"
+    },
+    {
+      "name": "pickup",
+      "description": "Pick up context from a relay created by a previous session",
+      "path": "commands/pickup.md"
+    }
+  ]
 }
