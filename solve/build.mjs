@@ -9,8 +9,8 @@ await build({
 	bundle: true,
 	platform: 'node',
 	format: 'cjs',
-	outfile: 'dist/solve-mcp.js',
+	outfile: 'dist/solve-mcp.cjs',
 	banner: { js: '#!/usr/bin/env node' }
 });
 
-console.log('Build complete → dist/solve-mcp.js');
+console.log('Build complete → dist/solve-mcp.cjs');
