@@ -4,9 +4,42 @@ import {
   CallToolRequestSchema,
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
-import * as fs   from 'fs';
-import * as path from 'path';
+import * as fs            from 'fs';
+import * as path          from 'path';
+import * as http          from 'http';
+import { spawn }          from 'child_process';
 import type { SolveState, SolveNode, SolutionNode, ProblemNode } from './types.js';
+
+// ── Visualisation server ───────────────────────────────────────────────────────
+
+const VIZ_PORT        = 7337;
+const PLUGIN_ROOT     = process.env.CLAUDE_PLUGIN_ROOT ?? '';
+const PLUGIN_DATA     = process.env.CLAUDE_PLUGIN_DATA ?? '';
+
+function isVizRunning(): Promise<boolean> {
+  return new Promise(resolve => {
+    const req = http.get(`http://localhost:${VIZ_PORT}/state`, res => {
+      res.resume();
+      resolve(res.statusCode !== undefined);
+    });
+    req.on('error', () => resolve(false));
+    req.setTimeout(500, () => { req.destroy(); resolve(false); });
+  });
+}
+
+async function ensureVizServer(): Promise<string> {
+  if (await isVizRunning()) return `http://localhost:${VIZ_PORT}`;
+  if (!PLUGIN_ROOT) return 'Visualisation server not available (CLAUDE_PLUGIN_ROOT unset).';
+  const indexJs = path.join(PLUGIN_ROOT, 'build', 'index.js');
+  if (!fs.existsSync(indexJs)) return 'Visualisation server not available (build/index.js not found).';
+  const child = spawn('node', [indexJs], {
+    detached: true,
+    stdio:    'ignore',
+    env:      { ...process.env, PORT: String(VIZ_PORT), CLAUDE_PLUGIN_DATA: PLUGIN_DATA },
+  });
+  child.unref();
+  return `http://localhost:${VIZ_PORT}`;
+}
 
 // ── State file lookup ──────────────────────────────────────────────────────────
 
@@ -40,7 +73,7 @@ function save(state: SolveState): void {
 }
 
 /** Create a fresh solve session and make it current. Returns the new state. */
-function createSession(): SolveState {
+async function createSession(): Promise<SolveState> {
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
   const solveId = `${Date.now()}`;
   const state: SolveState = {
@@ -58,6 +91,7 @@ function createSession(): SolveState {
   const treeFile = path.join(CLAUDE_DIR, `solve_tree_${solveId}.json`);
   fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
   fs.writeFileSync(POINTER_FILE, solveId + '\n');
+  ensureVizServer(); // fire-and-forget
   return state;
 }
 
@@ -65,7 +99,7 @@ function createSession(): SolveState {
  * Load the current session if it is still solving, or create a fresh one if
  * there is none or the previous one is already finished.
  */
-function loadOrCreate(): SolveState {
+async function loadOrCreate(): Promise<SolveState> {
   const existing = load();
   if (existing && existing.status === 'solving') return existing;
   return createSession();
@@ -146,13 +180,13 @@ function fail(message: string): string {
 
 type Args = Record<string, string | undefined>;
 
-function toolSolveProblem({ text, id }: Args): string {
+async function toolSolveProblem({ text, id }: Args): Promise<string> {
   if (!text) return fail('text is required.');
 
   let state: SolveState;
   if (!id) {
     // Root problem declaration — resume or create session
-    state = loadOrCreate();
+    state = await loadOrCreate();
     state.root_problem = state.root_problem ? `${state.root_problem}\n${text}` : text;
     save(state);
     return ok('Root problem set.', state);
@@ -180,12 +214,12 @@ function toolSolveProblem({ text, id }: Args): string {
   return ok(`Sub-problem ${id} declared.`, state);
 }
 
-function toolSolveResearch({ findings, id }: Args): string {
+async function toolSolveResearch({ findings, id }: Args): Promise<string> {
   if (!findings) return fail('findings is required.');
 
   if (!id) {
     // Root research — resume or create session
-    const state = loadOrCreate();
+    const state = await loadOrCreate();
     state.root_research = state.root_research
       ? `${state.root_research}\n${findings}` : findings;
     save(state);
@@ -307,6 +341,13 @@ function toolSolveBlock({ id, reason }: Args): string {
   );
 }
 
+async function toolSolveServer(_args: Args): Promise<string> {
+  const url = await ensureVizServer();
+  return url.startsWith('http')
+    ? `Visualisation server running at ${url}`
+    : url;
+}
+
 function toolSolveCompare({ text }: Args): string {
   const state = load();
   if (!state) return fail('No active solve session.');
@@ -334,7 +375,7 @@ function toolSolveSelect({ id }: Args): string {
 
 // ── Tool registry ──────────────────────────────────────────────────────────────
 
-const HANDLERS: Record<string, (args: Args) => string> = {
+const HANDLERS: Record<string, (args: Args) => string | Promise<string>> = {
   solve_problem:     toolSolveProblem,
   solve_research:    toolSolveResearch,
   solve_declare:     toolSolveDeclare,
@@ -343,6 +384,7 @@ const HANDLERS: Record<string, (args: Args) => string> = {
   solve_block:       toolSolveBlock,
   solve_compare:     toolSolveCompare,
   solve_select:      toolSolveSelect,
+  solve_server:      toolSolveServer,
 };
 
 const TOOL_DEFS = [
@@ -443,6 +485,11 @@ const TOOL_DEFS = [
     },
   },
   {
+    name: 'solve_server',
+    description: 'Start the visualisation server if it is not already running. Returns the URL.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
     name: 'solve_select',
     description:
       'Select the winning solution when multiple top-level solutions are resolved. Unlocks the edit gate.',
@@ -477,7 +524,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
     };
   }
 
-  const result = handler(args);
+  const result = await handler(args);
   const isError = result.startsWith('Error:');
   return {
     content: [{ type: 'text' as const, text: result }],

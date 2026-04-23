@@ -8,6 +8,7 @@ allowed-tools:
   - "mcp__plugin_solve_solve__solve_block"
   - "mcp__plugin_solve_solve__solve_compare"
   - "mcp__plugin_solve_solve__solve_select"
+  - "mcp__plugin_solve_solve__solve_server"
 ---
 # Solve
 

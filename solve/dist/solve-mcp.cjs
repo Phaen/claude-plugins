@@ -3483,7 +3483,7 @@ var require_schemes = __commonJS({
       urnComponent.nss = (uuidComponent.uuid || "").toLowerCase();
       return urnComponent;
     }
-    var http = (
+    var http2 = (
       /** @type {SchemeHandler} */
       {
         scheme: "http",
@@ -3496,7 +3496,7 @@ var require_schemes = __commonJS({
       /** @type {SchemeHandler} */
       {
         scheme: "https",
-        domainHost: http.domainHost,
+        domainHost: http2.domainHost,
         parse: httpParse,
         serialize: httpSerialize
       }
@@ -3540,7 +3540,7 @@ var require_schemes = __commonJS({
     var SCHEMES = (
       /** @type {Record<SchemeName, SchemeHandler>} */
       {
-        http,
+        http: http2,
         https,
         ws,
         wss,
@@ -20830,6 +20830,37 @@ var StdioServerTransport = class {
 // src/solve-mcp.ts
 var fs = __toESM(require("fs"), 1);
 var path = __toESM(require("path"), 1);
+var http = __toESM(require("http"), 1);
+var import_child_process = require("child_process");
+var VIZ_PORT = 7337;
+var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT ?? "";
+var PLUGIN_DATA = process.env.CLAUDE_PLUGIN_DATA ?? "";
+function isVizRunning() {
+  return new Promise((resolve) => {
+    const req = http.get(`http://localhost:${VIZ_PORT}/state`, (res) => {
+      res.resume();
+      resolve(res.statusCode !== void 0);
+    });
+    req.on("error", () => resolve(false));
+    req.setTimeout(500, () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
+}
+async function ensureVizServer() {
+  if (await isVizRunning()) return `http://localhost:${VIZ_PORT}`;
+  if (!PLUGIN_ROOT) return "Visualisation server not available (CLAUDE_PLUGIN_ROOT unset).";
+  const indexJs = path.join(PLUGIN_ROOT, "build", "index.js");
+  if (!fs.existsSync(indexJs)) return "Visualisation server not available (build/index.js not found).";
+  const child = (0, import_child_process.spawn)("node", [indexJs], {
+    detached: true,
+    stdio: "ignore",
+    env: { ...process.env, PORT: String(VIZ_PORT), CLAUDE_PLUGIN_DATA: PLUGIN_DATA }
+  });
+  child.unref();
+  return `http://localhost:${VIZ_PORT}`;
+}
 var PROJECT_DIR = process.cwd();
 var CLAUDE_DIR = path.join(PROJECT_DIR, ".claude");
 var POINTER_FILE = path.join(CLAUDE_DIR, "solve_current");
@@ -20855,7 +20886,7 @@ function save(state) {
   state.updated_at = Date.now() / 1e3;
   fs.writeFileSync(f, JSON.stringify(state, null, 2));
 }
-function createSession() {
+async function createSession() {
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
   const solveId = `${Date.now()}`;
   const state = {
@@ -20873,9 +20904,10 @@ function createSession() {
   const treeFile = path.join(CLAUDE_DIR, `solve_tree_${solveId}.json`);
   fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
   fs.writeFileSync(POINTER_FILE, solveId + "\n");
+  ensureVizServer();
   return state;
 }
-function loadOrCreate() {
+async function loadOrCreate() {
   const existing = load();
   if (existing && existing.status === "solving") return existing;
   return createSession();
@@ -20931,11 +20963,11 @@ ${renderTree(state)}`;
 function fail(message) {
   return `Error: ${message}`;
 }
-function toolSolveProblem({ text, id }) {
+async function toolSolveProblem({ text, id }) {
   if (!text) return fail("text is required.");
   let state;
   if (!id) {
-    state = loadOrCreate();
+    state = await loadOrCreate();
     state.root_problem = state.root_problem ? `${state.root_problem}
 ${text}` : text;
     save(state);
@@ -20966,10 +20998,10 @@ ${text}` : text;
   save(state);
   return ok(`Sub-problem ${id} declared.`, state);
 }
-function toolSolveResearch({ findings, id }) {
+async function toolSolveResearch({ findings, id }) {
   if (!findings) return fail("findings is required.");
   if (!id) {
-    const state2 = loadOrCreate();
+    const state2 = await loadOrCreate();
     state2.root_research = state2.root_research ? `${state2.root_research}
 ${findings}` : findings;
     save(state2);
@@ -21076,6 +21108,10 @@ function toolSolveBlock({ id, reason }) {
     state
   );
 }
+async function toolSolveServer(_args) {
+  const url2 = await ensureVizServer();
+  return url2.startsWith("http") ? `Visualisation server running at ${url2}` : url2;
+}
 function toolSolveCompare({ text }) {
   const state = load();
   if (!state) return fail("No active solve session.");
@@ -21105,7 +21141,8 @@ var HANDLERS = {
   solve_resolve: toolSolveResolve,
   solve_block: toolSolveBlock,
   solve_compare: toolSolveCompare,
-  solve_select: toolSolveSelect
+  solve_select: toolSolveSelect,
+  solve_server: toolSolveServer
 };
 var TOOL_DEFS = [
   {
@@ -21192,6 +21229,11 @@ var TOOL_DEFS = [
     }
   },
   {
+    name: "solve_server",
+    description: "Start the visualisation server if it is not already running. Returns the URL.",
+    inputSchema: { type: "object", properties: {} }
+  },
+  {
     name: "solve_select",
     description: "Select the winning solution when multiple top-level solutions are resolved. Unlocks the edit gate.",
     inputSchema: {
@@ -21218,7 +21260,7 @@ server.setRequestHandler(CallToolRequestSchema, async (req) => {
       isError: true
     };
   }
-  const result = handler(args);
+  const result = await handler(args);
   const isError = result.startsWith("Error:");
   return {
     content: [{ type: "text", text: result }],
