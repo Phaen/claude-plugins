@@ -1,23 +1,23 @@
 # solve
 
-A Claude Code plugin that enforces structured problem-solving before any code is written.
+A Claude Code plugin that enforces structured problem-solving before any code is written. The agent must build a complete solution tree — investigate the problem, declare all solutions, research each one, resolve or block — before the edit gate unlocks.
 
 ## What it does
 
-When you invoke `/solve`, Claude must:
+When you invoke `/solve:solve`, Claude must:
 
-1. **Declare all candidate solutions** upfront — no undeclared options
-2. **Investigate each one** with real tool calls before drawing conclusions
-3. **Resolve or cull** every solution with explicit reasoning
-4. **Select** the winner (or report blocked if nothing works)
+1. **State the problem** precisely — current vs expected behaviour
+2. **Investigate** the problem with real tool calls before forming opinions
+3. **Declare all candidate solutions** upfront — no undeclared options
+4. **Research each one** with real tool calls before drawing conclusions
+5. **Resolve or block** every solution with explicit reasoning
+6. **Select** the winner (or report blocked if nothing works)
 
 Only after a complete, valid tree does the edit gate unlock and Claude may touch files. If a test or build fails during implementation, the gate re-locks and a new solve is required.
 
-A live tree visualisation runs at **http://localhost:7337** — nodes update in real-time as Claude works through the tree.
+A live tree visualisation runs at **http://localhost:7337** and launches automatically when a session starts.
 
 ## Install
-
-Add the marketplace source and install:
 
 ```
 /plugin marketplace add Phaen/claude-plugins
@@ -27,34 +27,27 @@ Add the marketplace source and install:
 ## Usage
 
 ```
-/solve <problem description>
+/solve:solve <problem description>
 ```
 
-Or just `/solve` with no arguments — Claude will derive the problem from context.
+Or just `/solve:solve` with no arguments — Claude will derive the problem from context.
 
-## How the tree works
+## Tool flow
 
 ```
-<problem>
-What is failing and why.
-</problem>
+solve_problem(text="what is failing and why")
+solve_investigate(findings="what you confirmed by reading files")
 
-<solution id="1">Brief approach.</solution>
-<solution id="2">Alternative approach.</solution>
+solve_declare(id="1", text="approach A")
+solve_declare(id="2", text="approach B")
 
-<investigate id="1">
-[tool calls here]
-Findings.
-</investigate>
-<resolved id="1">What was confirmed.</resolved>
+solve_research(id="1", findings="what you verified about approach A")
+solve_resolve(id="1", text="why approach A works and how to implement it")
 
-<investigate id="2">
-[tool calls here]
-Findings.
-</investigate>
-<cull id="2"/>   ← fatal blocker found
-
-<selected id="1"/>
+solve_research(id="2", findings="what you verified about approach B")
+solve_problem(id="2.1", text="blocker discovered in approach B")
+solve_investigate(id="2.1", findings="whether the blocker can be worked around")
+solve_block(id="2.1", reason="cannot be resolved")
 ```
 
 Sub-problems use dotted IDs (`1.1`, `1.1.1`) for nested investigation.
@@ -64,18 +57,17 @@ Sub-problems use dotted IDs (`1.1`, `1.1.1`) for nested investigation.
 ```
 solve/
 ├── .claude-plugin/
-│   └── plugin.json          # manifest + hooks wiring
+│   └── plugin.json          # manifest, MCP server, hooks
 ├── commands/
-│   └── solve.md             # /solve skill definition
+│   └── solve.md             # /solve:solve command definition
 ├── scripts/
-│   ├── solve-trigger.sh     # UserPromptSubmit: init tree, start server
-│   ├── solve-check.sh       # Stop: validate tree, unlock edit gate
-│   ├── solve-tool.sh        # PostToolUse: increment tool counts live
-│   ├── edit-guard.sh        # PreToolUse: block edits until tree complete
-│   ├── bash-failure.sh      # PostToolUse: re-lock gate on test failure
-│   ├── solve-update.js      # Core state engine
-│   └── solve-server.js      # HTTP server + SSE + web UI
-└── README.md
+│   ├── hook-edit.sh         # PreToolUse: block edits until tree resolved
+│   └── hook-stop.sh         # Stop: validate tree completeness
+├── src/
+│   ├── solve-mcp.ts         # MCP server source
+│   └── types.ts             # shared types
+└── dist/
+    └── solve-mcp.cjs        # built MCP server
 ```
 
 ## Author
