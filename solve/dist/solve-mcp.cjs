@@ -20894,7 +20894,7 @@ async function createSession() {
     cwd: PROJECT_DIR,
     status: "solving",
     root_problem: "",
-    root_research: "",
+    root_investigate: "",
     nodes: {},
     selected_id: null,
     compare_text: null,
@@ -20986,7 +20986,7 @@ ${text}` : text;
       parent_solution: parentSol,
       text: "",
       status: "pending",
-      research_text: "",
+      investigate_text: "",
       blocked_text: null
     };
     state.nodes[id] = node2;
@@ -20998,14 +20998,14 @@ ${text}` : text;
   save(state);
   return ok(`Sub-problem ${id} declared.`, state);
 }
-async function toolSolveResearch({ findings, id }) {
+async function toolSolveInvestigate({ findings, id }) {
   if (!findings) return fail("findings is required.");
   if (!id) {
     const state2 = await loadOrCreate();
-    state2.root_research = state2.root_research ? `${state2.root_research}
+    state2.root_investigate = state2.root_investigate ? `${state2.root_investigate}
 ${findings}` : findings;
     save(state2);
-    return ok("Research recorded.", state2);
+    return ok("Investigation recorded.", state2);
   }
   const state = load();
   if (!state) return fail("No active solve session. Call solve_problem (root) first.");
@@ -21014,11 +21014,11 @@ ${findings}` : findings;
   if (!node || node.type !== "problem")
     return fail(`No sub-problem "${id}". Declare it with solve_problem first.`);
   if (node.status === "blocked") return fail(`Problem ${id} is already blocked.`);
-  node.research_text = node.research_text ? `${node.research_text}
+  node.investigate_text = node.investigate_text ? `${node.investigate_text}
 ${findings}` : findings;
-  node.status = "researched";
+  node.status = "investigated";
   save(state);
-  return ok("Research recorded.", state);
+  return ok(`Investigation recorded for sub-problem ${id}.`, state);
 }
 function toolSolveDeclare({ id, text }) {
   const state = load();
@@ -21040,7 +21040,7 @@ function toolSolveDeclare({ id, text }) {
       parent_problem: parentProb,
       text,
       status: "pending",
-      investigate_text: "",
+      research_text: "",
       resolved_text: ""
     };
     state.nodes[id] = node;
@@ -21048,7 +21048,7 @@ function toolSolveDeclare({ id, text }) {
   save(state);
   return ok(`Solution ${id} declared.`, state);
 }
-function toolSolveInvestigate({ id, findings }) {
+function toolSolveResearch({ id, findings }) {
   const state = load();
   if (!state) return fail("No active solve session.");
   if (state.status !== "solving") return fail(`Solve is already ${state.status}.`);
@@ -21059,11 +21059,11 @@ function toolSolveInvestigate({ id, findings }) {
     return fail(`No solution "${id}". Declare it with solve_declare first.`);
   if (node.status === "resolved") return fail(`Solution ${id} is already resolved.`);
   if (node.status === "failed") return fail(`Solution ${id} has already failed.`);
-  node.investigate_text = node.investigate_text ? `${node.investigate_text}
+  node.research_text = node.research_text ? `${node.research_text}
 ${findings}` : findings;
-  node.status = "investigated";
+  node.status = "researched";
   save(state);
-  return ok(`Investigation recorded for solution ${id}.`, state);
+  return ok(`Research recorded for solution ${id}.`, state);
 }
 function toolSolveResolve({ id, text }) {
   const state = load();
@@ -21075,7 +21075,7 @@ function toolSolveResolve({ id, text }) {
   if (!node || node.type !== "solution")
     return fail(`No solution "${id}". Declare it with solve_declare first.`);
   if (node.status === "pending")
-    return fail(`Solution ${id} has not been investigated. Call solve_investigate first.`);
+    return fail(`Solution ${id} has not been researched. Call solve_research first.`);
   if (node.status === "resolved") return fail(`Solution ${id} is already resolved.`);
   if (node.status === "failed") return fail(`Solution ${id} has already failed.`);
   node.resolved_text = text;
@@ -21108,10 +21108,6 @@ function toolSolveBlock({ id, reason }) {
     state
   );
 }
-async function toolSolveServer(_args) {
-  const url2 = await ensureVizServer();
-  return url2.startsWith("http") ? `Visualisation server running at ${url2}` : url2;
-}
 function toolSolveCompare({ text }) {
   const state = load();
   if (!state) return fail("No active solve session.");
@@ -21133,11 +21129,15 @@ function toolSolveSelect({ id }) {
   save(state);
   return ok(`Solution ${id} selected.`, state);
 }
+async function toolSolveServer(_args) {
+  const url2 = await ensureVizServer();
+  return url2.startsWith("http") ? `Visualisation server running at ${url2}` : url2;
+}
 var HANDLERS = {
   solve_problem: toolSolveProblem,
-  solve_research: toolSolveResearch,
-  solve_declare: toolSolveDeclare,
   solve_investigate: toolSolveInvestigate,
+  solve_declare: toolSolveDeclare,
+  solve_research: toolSolveResearch,
   solve_resolve: toolSolveResolve,
   solve_block: toolSolveBlock,
   solve_compare: toolSolveCompare,
@@ -21147,7 +21147,7 @@ var HANDLERS = {
 var TOOL_DEFS = [
   {
     name: "solve_problem",
-    description: 'Declare or update the problem statement. Omit id for the root problem; provide a dotted id (e.g. "1.1") for a sub-problem discovered while investigating a solution.',
+    description: 'Declare or update the problem statement. Omit id for the root problem (also creates the session); provide a dotted id (e.g. "1.1") for a sub-problem discovered while researching a solution.',
     inputSchema: {
       type: "object",
       properties: {
@@ -21158,20 +21158,20 @@ var TOOL_DEFS = [
     }
   },
   {
-    name: "solve_research",
-    description: "Record research findings for the root problem or a sub-problem. Multiple calls append. Marks the sub-problem as researched.",
+    name: "solve_investigate",
+    description: "Record investigation findings about the problem (root or sub-problem). Multiple calls append. Omit id for root-level investigation; pass sub-problem id otherwise.",
     inputSchema: {
       type: "object",
       properties: {
         findings: { type: "string", description: "What you found" },
-        id: { type: "string", description: "Sub-problem ID. Omit for root-level research." }
+        id: { type: "string", description: "Sub-problem ID. Omit for root-level investigation." }
       },
       required: ["findings"]
     }
   },
   {
     name: "solve_declare",
-    description: 'Declare a solution. Use dotted IDs for sub-solutions under a sub-problem (e.g. "1.1.1"). Declare all plausible solutions before investigating any.',
+    description: 'Declare a solution. Use dotted IDs for sub-solutions under a sub-problem (e.g. "1.1.1"). Declare all plausible solutions before researching any.',
     inputSchema: {
       type: "object",
       properties: {
@@ -21182,20 +21182,20 @@ var TOOL_DEFS = [
     }
   },
   {
-    name: "solve_investigate",
-    description: "Record investigation findings for a solution. Multiple calls append. First call marks the solution as investigated. Must be called before solve_resolve.",
+    name: "solve_research",
+    description: "Record research findings for a solution. Multiple calls append. First call marks the solution as researched. Must be called before solve_resolve.",
     inputSchema: {
       type: "object",
       properties: {
         id: { type: "string", description: "Solution ID" },
-        findings: { type: "string", description: "What you found while investigating" }
+        findings: { type: "string", description: "What you found while researching this solution" }
       },
       required: ["id", "findings"]
     }
   },
   {
     name: "solve_resolve",
-    description: "Mark a solution as resolved. Requires prior solve_investigate. If this is the only resolved top-level solution, unlocks the edit gate.",
+    description: "Mark a solution as resolved. Requires prior solve_research. If this is the only resolved top-level solution, unlocks the edit gate.",
     inputSchema: {
       type: "object",
       properties: {
@@ -21229,11 +21229,6 @@ var TOOL_DEFS = [
     }
   },
   {
-    name: "solve_server",
-    description: "Start the visualisation server if it is not already running. Returns the URL.",
-    inputSchema: { type: "object", properties: {} }
-  },
-  {
     name: "solve_select",
     description: "Select the winning solution when multiple top-level solutions are resolved. Unlocks the edit gate.",
     inputSchema: {
@@ -21243,6 +21238,11 @@ var TOOL_DEFS = [
       },
       required: ["id"]
     }
+  },
+  {
+    name: "solve_server",
+    description: "Start the visualisation server if it is not already running. Returns the URL.",
+    inputSchema: { type: "object", properties: {} }
   }
 ];
 var server = new Server(

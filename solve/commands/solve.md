@@ -1,9 +1,9 @@
 ---
 allowed-tools:
-  - "mcp__plugin_solve_solve__solve_research"
   - "mcp__plugin_solve_solve__solve_problem"
-  - "mcp__plugin_solve_solve__solve_declare"
   - "mcp__plugin_solve_solve__solve_investigate"
+  - "mcp__plugin_solve_solve__solve_declare"
+  - "mcp__plugin_solve_solve__solve_research"
   - "mcp__plugin_solve_solve__solve_resolve"
   - "mcp__plugin_solve_solve__solve_block"
   - "mcp__plugin_solve_solve__solve_compare"
@@ -12,94 +12,114 @@ allowed-tools:
 ---
 # Solve
 
-Structured problem-solving with an explicit solution tree. Required before implementing any non-trivial fix. Self-invoked when a test, build, or tool failure occurs during implementation.
+**Your first action is to call `solve_problem` with a precise problem statement. Do this now — it creates the session and starts the protocol.**
 
-Use the `solve` MCP tools throughout. Every tool call returns the current tree so you always know where you stand. The edit gate unlocks automatically when the tree reaches `resolved`.
+```
+solve_problem(text="What is failing. Current behaviour vs expected behaviour. Where the divergence occurs.")
+```
 
-## Problem
+The problem is: $ARGUMENTS
 
-$ARGUMENTS
-
-If no arguments given, derive the problem from the current conversation context.
+If no arguments were given, derive the problem from the current conversation context.
 
 ---
 
-## Step 1 — Research
+## Protocol
 
-Read every relevant file before articulating the problem. Then record what you found:
-
-```
-solve_research(findings="what you confirmed by reading")
-solve_problem(text="what is failing. current behaviour vs expected behaviour.")
-```
+You are operating under a structured problem-solving protocol enforced by the solve MCP server. The server tracks every step and will reject shortcuts. There is no internal thinking budget — **all reasoning must be externalised through MCP tool calls**. If it is not in a tool call, it did not happen.
 
 ---
 
-## Step 2 — Declare all solutions
+### Step 1 — Investigate the problem
 
-Before investigating any, declare every plausible approach. Every option deserves a slot.
+Before forming any opinion, **read the relevant files**. Do not guess. Do not assume. Open files, trace call paths, check configs. When done, record everything you found:
 
 ```
-solve_declare(id="1", text="brief description of approach")
-solve_declare(id="2", text="brief description of approach")
-solve_declare(id="3", text="brief description of approach")
+solve_investigate(findings="Everything you verified by actually reading. What files, what lines, what behaviour you confirmed. The server will reject vague summaries.")
 ```
+
+This is your externalised thinking. Write it as if a senior engineer will audit your reasoning. Be specific.
 
 ---
 
-## Step 3 — Investigate each solution
+### Step 2 — Declare every plausible solution
 
-For each solution: use tools (Read, Grep, Glob, Bash) to validate it, then record findings. Multiple `solve_investigate` calls on the same solution append — call again if you dig deeper.
+**Before researching any solution**, declare all of them. Do not lead with the one you already suspect and skip the rest. The server knows if you skipped options.
+
+Every approach that could plausibly work gets a slot:
 
 ```
-solve_investigate(id="1", findings="what you found")
+solve_declare(id="1", text="specific description of the approach and its core mechanism")
+solve_declare(id="2", text="specific description of the approach and its core mechanism")
+solve_declare(id="3", text="specific description of the approach and its core mechanism")
 ```
 
-**Outcome — exactly one of:**
-
-**No blockers → resolve:**
-```
-solve_resolve(id="1", text="why this works and how to implement it")
-```
-
-**Blocker found → declare the sub-problem, research it:**
-```
-solve_problem(id="1.1", text="description of the blocker")
-solve_research(id="1.1", findings="whether it can be worked around")
-```
-
-Then either recurse into sub-solutions (`1.1.1`, `1.1.2`, …) or block:
-```
-solve_block(id="1.1", reason="why this cannot be resolved")
-```
-
-Blocking a sub-problem automatically fails the parent solution. Move on to the next top-level solution.
-
-Every solution must end up either `resolved` or with a `blocked` sub-problem.
+Three is the minimum for non-trivial problems. If you only see one option, you have not thought hard enough.
 
 ---
 
-## Step 4 — Select (only when multiple top-level solutions resolved)
+### Step 3 — Research each solution
+
+For each declared solution, **actually verify it** using tools (Read, Grep, Glob, Bash). Do not reason from memory. Then record your findings:
 
 ```
-solve_compare(text="- id X: loses because ...\n- id Y: wins because ...")
-solve_select(id="Y")
+solve_research(id="1", findings="What you verified. What files you read. What the code actually does. Why this approach works or why it has problems. Be concrete — line numbers, function names, specific behaviours.")
 ```
 
+Multiple calls to `solve_research` on the same solution append — use this to build up your analysis as you dig deeper.
+
+After researching, reach exactly one outcome:
+
+**No blockers found → resolve it:**
+```
+solve_resolve(id="1", text="Precise explanation of why this solution works and exactly how to implement it. This becomes the implementation plan — it must be specific enough to act on.")
+```
+
+**A genuine blocker found → declare it as a sub-problem and investigate it:**
+```
+solve_problem(id="1.1", text="Specific description of what blocks this solution.")
+solve_investigate(id="1.1", findings="What you verified about the blocker. Is it fundamental? Is there a workaround?")
+```
+
+Then declare sub-solutions and research them the same way (`1.1.1`, `1.1.2`, …):
+```
+solve_declare(id="1.1.1", text="approach to resolve this sub-problem")
+solve_research(id="1.1.1", findings="what you verified")
+solve_resolve(id="1.1.1", text="why this resolves the blocker")
+```
+
+Or, if the blocker truly cannot be resolved:
+```
+solve_block(id="1.1", reason="Why this blocker cannot be resolved.")
+```
+
+Blocking a sub-problem automatically fails the parent. Move to the next top-level solution.
+
+**Every solution must end in either `resolved` or a `blocked` sub-problem. Leaving solutions in `pending` or `researched` is not permitted.**
+
 ---
 
-## Step 5 — Implement
+### Step 4 — Select (only when multiple top-level solutions resolved)
 
-Once the tree shows `Status: resolved — edit gate unlocked`, proceed with edits.
+If more than one top-level solution reached `resolved`, compare them before selecting:
+
+```
+solve_compare(text="- id 1: loses because [specific reason]\n- id 2: wins because [specific reason]")
+solve_select(id="2")
+```
+
+The comparison must name concrete trade-offs. "Option 2 is cleaner" is not a reason.
 
 ---
 
-## All solutions failed
+### Step 5 — Implement
 
-If every top-level solution fails, the tree status becomes `blocked`. Stop. Do not edit anything. Report to the user — the tree already shows why each solution failed.
+The tree will show `Status: resolved — edit gate unlocked` when you are cleared to write code. Not before.
+
+Implement exactly the solution you resolved. Do not deviate from it mid-implementation. If you hit a blocker while implementing — a test failure, a build error, an assumption that turned out to be wrong — **stop immediately**. Do not patch around it inline. Re-invoke `/solve` with the new problem. The edit gate re-locks until the new tree is resolved.
 
 ---
 
-## Self-trigger
+### All solutions failed
 
-If during implementation you hit a test failure, build failure, or blocker that invalidates the selected solution — stop immediately. Do not attempt an inline fix. Re-run `/solve` with the new problem. The edit gate re-locks until resolved.
+If every top-level solution is blocked, the tree status becomes `blocked`. Stop. Do not edit anything. Report to the user — the tree already explains why each path failed.
