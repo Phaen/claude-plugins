@@ -1,4 +1,4 @@
-# claude-solve
+# solve
 
 A Claude Code plugin that enforces structured problem-solving before any code is written.
 
@@ -17,20 +17,20 @@ A live tree visualisation runs at **http://localhost:7337** — nodes update in 
 
 ## Install
 
-Add this repo as a marketplace source in Claude Code:
+Add the marketplace source and install:
 
 ```
-/plugin marketplace add https://github.com/Phaen/claude-solve
-/plugin install claude-solve@Phaen
+/plugin marketplace add Phaen/claude-plugins
+/plugin install solve@Phaen
 ```
 
 ## Usage
 
 ```
-/claude-solve:solve <problem description>
+/solve <problem description>
 ```
 
-Or just `/claude-solve:solve` with no arguments — Claude will derive the problem from context.
+Or just `/solve` with no arguments — Claude will derive the problem from context.
 
 ## How the tree works
 
@@ -62,11 +62,11 @@ Sub-problems use dotted IDs (`1.1`, `1.1.1`) for nested investigation.
 ## Structure
 
 ```
-claude-solve/
+solve/
 ├── .claude-plugin/
 │   └── plugin.json          # manifest + hooks wiring
 ├── commands/
-│   └── solve.md             # /claude-solve:solve skill definition
+│   └── solve.md             # /solve skill definition
 ├── scripts/
 │   ├── solve-trigger.sh     # UserPromptSubmit: init tree, start server
 │   ├── solve-check.sh       # Stop: validate tree, unlock edit gate
