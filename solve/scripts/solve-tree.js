@@ -2,43 +2,18 @@
 // solve-tree.js — solve tree state helper for hooks.
 //
 // Modes:
-//   init <session> <cwd>  — initialise a fresh tree state file
-//   validate <session> <cwd>  — check completeness; exit 1 with message if still solving
+//   validate <solve_id> <cwd>  — check completeness; exit 1 with message if still solving
 
 const fs   = require('fs');
 const path = require('path');
 
 const [,, mode, session, cwd] = process.argv;
 if (!mode || !session || !cwd) {
-  process.stderr.write(`Usage: solve-tree.js <init|validate> <session_id> <cwd>\n`);
+  process.stderr.write(`Usage: solve-tree.js validate <solve_id> <cwd>\n`);
   process.exit(1);
 }
 
 const treeFile = path.join(cwd, '.claude', `solve_tree_${session}.json`);
-
-function save(state) {
-  state.updated_at = Date.now() / 1000;
-  fs.mkdirSync(path.join(cwd, '.claude'), { recursive: true });
-  fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
-}
-
-// ── init ───────────────────────────────────────────────────────────────────────
-
-if (mode === 'init') {
-  save({
-    session_id:   session,
-    cwd,
-    status:       'solving',
-    root_problem: '',
-    root_research: '',
-    nodes:        {},
-    selected_id:  null,
-    compare_text: null,
-    blocked_text: null,
-    updated_at:   Date.now() / 1000,
-  });
-  process.exit(0);
-}
 
 // ── validate ───────────────────────────────────────────────────────────────────
 
