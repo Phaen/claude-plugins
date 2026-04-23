@@ -9,5 +9,5 @@
   "homepage": "https://github.com/Phaen/claude-plugins",
   "repository": "https://github.com/Phaen/claude-plugins",
   "license": "MIT",
-  "keywords": ["session", "handoff", "continuity", "context"]
+  "keywords": ["session", "relay", "continuity", "context"]
 }

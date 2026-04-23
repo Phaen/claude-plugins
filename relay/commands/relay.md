@@ -1,14 +1,14 @@
 ---
-allowed-tools: Write(*/.claude/session-handoff-*.md)
+allowed-tools: Write(*/.claude/session-relay-*.md)
 ---
 
-# Session Handoff
+# Session Relay
 
-Create a handoff summary for the next session context, written to `.claude/session-handoff-<subject>.md` in the project root. Derive a short kebab-case subject (2-4 words) from the arguments.
+Create a relay summary for another session, written to `.claude/session-relay-<subject>.md` in the project root. Derive a short kebab-case subject (2-4 words) from the arguments.
 
 ## Arguments
 
-`$ARGUMENTS` = The user's description of what matters. This is the PRIMARY input. Structure the entire handoff around what the user tells you here.
+`$ARGUMENTS` = The user's description of what matters. This is the PRIMARY input. Structure the entire relay around what the user tells you here.
 
 ## How to write the summary
 
@@ -35,4 +35,4 @@ At the very end of the file, always include these metadata lines:
 
 ## Context
 
-The handoff file is picked up by the next session via the `/pickup` command.
+The relay file is picked up by another session via the `/pickup` command.
