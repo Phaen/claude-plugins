@@ -1,3 +1,14 @@
+---
+allowed-tools:
+  - "mcp__plugin_solve_solve__solve_research"
+  - "mcp__plugin_solve_solve__solve_problem"
+  - "mcp__plugin_solve_solve__solve_declare"
+  - "mcp__plugin_solve_solve__solve_investigate"
+  - "mcp__plugin_solve_solve__solve_resolve"
+  - "mcp__plugin_solve_solve__solve_block"
+  - "mcp__plugin_solve_solve__solve_compare"
+  - "mcp__plugin_solve_solve__solve_select"
+---
 # Solve
 
 Structured problem-solving with an explicit solution tree. Required before implementing any non-trivial fix. Self-invoked when a test, build, or tool failure occurs during implementation.
