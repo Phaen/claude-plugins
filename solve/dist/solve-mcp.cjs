@@ -20831,14 +20831,19 @@ var StdioServerTransport = class {
 var fs = __toESM(require("fs"), 1);
 var path = __toESM(require("path"), 1);
 var PROJECT_DIR = process.cwd();
-var POINTER_FILE = path.join(PROJECT_DIR, ".claude", "solve_current");
-function getTreeFile() {
+var CLAUDE_DIR = path.join(PROJECT_DIR, ".claude");
+var POINTER_FILE = path.join(CLAUDE_DIR, "solve_current");
+function getSolveId() {
   try {
-    const solveId = fs.readFileSync(POINTER_FILE, "utf8").trim();
-    return solveId ? path.join(PROJECT_DIR, ".claude", `solve_tree_${solveId}.json`) : null;
+    const raw = fs.readFileSync(POINTER_FILE, "utf8").trim();
+    return raw ? raw.split(/\s+/)[0] : null;
   } catch {
     return null;
   }
+}
+function getTreeFile(solveId) {
+  const id = solveId ?? getSolveId();
+  return id ? path.join(CLAUDE_DIR, `solve_tree_${id}.json`) : null;
 }
 function load() {
   const f = getTreeFile();
@@ -20849,6 +20854,31 @@ function save(state) {
   const f = getTreeFile();
   state.updated_at = Date.now() / 1e3;
   fs.writeFileSync(f, JSON.stringify(state, null, 2));
+}
+function createSession() {
+  fs.mkdirSync(CLAUDE_DIR, { recursive: true });
+  const solveId = `${Date.now()}`;
+  const state = {
+    session_id: solveId,
+    cwd: PROJECT_DIR,
+    status: "solving",
+    root_problem: "",
+    root_research: "",
+    nodes: {},
+    selected_id: null,
+    compare_text: null,
+    blocked_text: null,
+    updated_at: Date.now() / 1e3
+  };
+  const treeFile = path.join(CLAUDE_DIR, `solve_tree_${solveId}.json`);
+  fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
+  fs.writeFileSync(POINTER_FILE, solveId + "\n");
+  return state;
+}
+function loadOrCreate() {
+  const existing = load();
+  if (!existing || existing.status !== "solving") return createSession();
+  return { error: "A solve is already in progress. Finish it (resolve or block all solutions) before starting a new one." };
 }
 function isSettled(sol, nodes) {
   if (sol.status === "resolved" || sol.status === "failed") return true;
@@ -20902,54 +20932,63 @@ function fail(message) {
   return `Error: ${message}`;
 }
 function toolSolveProblem({ text, id }) {
-  const state = load();
-  if (!state) return fail("No active solve session. Run /solve first.");
-  if (state.status !== "solving") return fail(`Solve is already ${state.status}.`);
   if (!text) return fail("text is required.");
+  let state;
   if (!id) {
+    const result = loadOrCreate();
+    if ("error" in result) return fail(result.error);
+    state = result;
     state.root_problem = state.root_problem ? `${state.root_problem}
 ${text}` : text;
-  } else {
-    if (!state.nodes[id]) {
-      const parentSol = id.includes(".") ? id.slice(0, id.lastIndexOf(".")) : null;
-      if (parentSol && !state.nodes[parentSol])
-        return fail(`Parent solution "${parentSol}" not declared. Use solve_declare first.`);
-      const node2 = {
-        type: "problem",
-        id,
-        parent_solution: parentSol,
-        text: "",
-        status: "pending",
-        research_text: "",
-        blocked_text: null
-      };
-      state.nodes[id] = node2;
-    }
-    const node = state.nodes[id];
-    if (node.type !== "problem") return fail(`${id} is a solution node, not a problem.`);
-    node.text = node.text ? `${node.text}
-${text}` : text;
+    save(state);
+    return ok("Root problem set.", state);
   }
+  state = load();
+  if (!state) return fail("No active solve session. Call solve_problem (root) first.");
+  if (state.status !== "solving") return fail(`Solve is already ${state.status}.`);
+  if (!state.nodes[id]) {
+    const parentSol = id.includes(".") ? id.slice(0, id.lastIndexOf(".")) : null;
+    if (parentSol && !state.nodes[parentSol])
+      return fail(`Parent solution "${parentSol}" not declared. Use solve_declare first.`);
+    const node2 = {
+      type: "problem",
+      id,
+      parent_solution: parentSol,
+      text: "",
+      status: "pending",
+      research_text: "",
+      blocked_text: null
+    };
+    state.nodes[id] = node2;
+  }
+  const node = state.nodes[id];
+  if (node.type !== "problem") return fail(`${id} is a solution node, not a problem.`);
+  node.text = node.text ? `${node.text}
+${text}` : text;
   save(state);
-  return ok(id ? `Sub-problem ${id} declared.` : "Root problem set.", state);
+  return ok(`Sub-problem ${id} declared.`, state);
 }
 function toolSolveResearch({ findings, id }) {
-  const state = load();
-  if (!state) return fail("No active solve session.");
-  if (state.status !== "solving") return fail(`Solve is already ${state.status}.`);
   if (!findings) return fail("findings is required.");
   if (!id) {
-    state.root_research = state.root_research ? `${state.root_research}
+    const result = loadOrCreate();
+    if ("error" in result) return fail(result.error);
+    const state2 = result;
+    state2.root_research = state2.root_research ? `${state2.root_research}
 ${findings}` : findings;
-  } else {
-    const node = state.nodes[id];
-    if (!node || node.type !== "problem")
-      return fail(`No sub-problem "${id}". Declare it with solve_problem first.`);
-    if (node.status === "blocked") return fail(`Problem ${id} is already blocked.`);
-    node.research_text = node.research_text ? `${node.research_text}
-${findings}` : findings;
-    node.status = "researched";
+    save(state2);
+    return ok("Research recorded.", state2);
   }
+  const state = load();
+  if (!state) return fail("No active solve session. Call solve_problem (root) first.");
+  if (state.status !== "solving") return fail(`Solve is already ${state.status}.`);
+  const node = state.nodes[id];
+  if (!node || node.type !== "problem")
+    return fail(`No sub-problem "${id}". Declare it with solve_problem first.`);
+  if (node.status === "blocked") return fail(`Problem ${id} is already blocked.`);
+  node.research_text = node.research_text ? `${node.research_text}
+${findings}` : findings;
+  node.status = "researched";
   save(state);
   return ok("Research recorded.", state);
 }

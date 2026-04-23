@@ -11,13 +11,20 @@ import type { SolveState, SolveNode, SolutionNode, ProblemNode } from './types.j
 // ── State file lookup ──────────────────────────────────────────────────────────
 
 const PROJECT_DIR   = process.cwd();
-const POINTER_FILE  = path.join(PROJECT_DIR, '.claude', 'solve_current');
+const CLAUDE_DIR    = path.join(PROJECT_DIR, '.claude');
+const POINTER_FILE  = path.join(CLAUDE_DIR, 'solve_current');
 
-function getTreeFile(): string | null {
+function getSolveId(): string | null {
   try {
-    const solveId = fs.readFileSync(POINTER_FILE, 'utf8').trim();
-    return solveId ? path.join(PROJECT_DIR, '.claude', `solve_tree_${solveId}.json`) : null;
+    const raw = fs.readFileSync(POINTER_FILE, 'utf8').trim();
+    // pointer file may contain "solve_id <transcript_line>" from old hook — take first token
+    return raw ? raw.split(/\s+/)[0] : null;
   } catch { return null; }
+}
+
+function getTreeFile(solveId?: string): string | null {
+  const id = solveId ?? getSolveId();
+  return id ? path.join(CLAUDE_DIR, `solve_tree_${id}.json`) : null;
 }
 
 function load(): SolveState | null {
@@ -30,6 +37,38 @@ function save(state: SolveState): void {
   const f = getTreeFile()!;
   state.updated_at = Date.now() / 1000;
   fs.writeFileSync(f, JSON.stringify(state, null, 2));
+}
+
+/** Create a fresh solve session and make it current. Returns the new state. */
+function createSession(): SolveState {
+  fs.mkdirSync(CLAUDE_DIR, { recursive: true });
+  const solveId = `${Date.now()}`;
+  const state: SolveState = {
+    session_id:    solveId,
+    cwd:           PROJECT_DIR,
+    status:        'solving',
+    root_problem:  '',
+    root_research: '',
+    nodes:         {},
+    selected_id:   null,
+    compare_text:  null,
+    blocked_text:  null,
+    updated_at:    Date.now() / 1000,
+  };
+  const treeFile = path.join(CLAUDE_DIR, `solve_tree_${solveId}.json`);
+  fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
+  fs.writeFileSync(POINTER_FILE, solveId + '\n');
+  return state;
+}
+
+/**
+ * Load the current session, or create a new one if there is none (or the
+ * previous one is already finished). Rejects if a solve is still in progress.
+ */
+function loadOrCreate(): SolveState | { error: string } {
+  const existing = load();
+  if (!existing || existing.status !== 'solving') return createSession();
+  return { error: 'A solve is already in progress. Finish it (resolve or block all solutions) before starting a new one.' };
 }
 
 // ── Tree renderer ──────────────────────────────────────────────────────────────
@@ -108,51 +147,66 @@ function fail(message: string): string {
 type Args = Record<string, string | undefined>;
 
 function toolSolveProblem({ text, id }: Args): string {
-  const state = load();
-  if (!state) return fail('No active solve session. Run /solve first.');
-  if (state.status !== 'solving') return fail(`Solve is already ${state.status}.`);
   if (!text) return fail('text is required.');
 
+  let state: SolveState;
   if (!id) {
+    // Root problem declaration — auto-create session if needed
+    const result = loadOrCreate();
+    if ('error' in result) return fail(result.error);
+    state = result;
     state.root_problem = state.root_problem ? `${state.root_problem}\n${text}` : text;
-  } else {
-    if (!state.nodes[id]) {
-      const parentSol = id.includes('.') ? id.slice(0, id.lastIndexOf('.')) : null;
-      if (parentSol && !state.nodes[parentSol])
-        return fail(`Parent solution "${parentSol}" not declared. Use solve_declare first.`);
-      const node: ProblemNode = {
-        type: 'problem', id, parent_solution: parentSol,
-        text: '', status: 'pending', research_text: '', blocked_text: null,
-      };
-      state.nodes[id] = node;
-    }
-    const node = state.nodes[id];
-    if (node.type !== 'problem') return fail(`${id} is a solution node, not a problem.`);
-    node.text = node.text ? `${node.text}\n${text}` : text;
+    save(state);
+    return ok('Root problem set.', state);
   }
 
+  state = load()!;
+  if (!state) return fail('No active solve session. Call solve_problem (root) first.');
+  if (state.status !== 'solving') return fail(`Solve is already ${state.status}.`);
+
+  if (!state.nodes[id]) {
+    const parentSol = id.includes('.') ? id.slice(0, id.lastIndexOf('.')) : null;
+    if (parentSol && !state.nodes[parentSol])
+      return fail(`Parent solution "${parentSol}" not declared. Use solve_declare first.`);
+    const node: ProblemNode = {
+      type: 'problem', id, parent_solution: parentSol,
+      text: '', status: 'pending', research_text: '', blocked_text: null,
+    };
+    state.nodes[id] = node;
+  }
+  const node = state.nodes[id];
+  if (node.type !== 'problem') return fail(`${id} is a solution node, not a problem.`);
+  node.text = node.text ? `${node.text}\n${text}` : text;
+
   save(state);
-  return ok(id ? `Sub-problem ${id} declared.` : 'Root problem set.', state);
+  return ok(`Sub-problem ${id} declared.`, state);
 }
 
 function toolSolveResearch({ findings, id }: Args): string {
-  const state = load();
-  if (!state) return fail('No active solve session.');
-  if (state.status !== 'solving') return fail(`Solve is already ${state.status}.`);
   if (!findings) return fail('findings is required.');
 
   if (!id) {
+    // Root research — auto-create session if needed
+    const result = loadOrCreate();
+    if ('error' in result) return fail(result.error);
+    const state = result;
     state.root_research = state.root_research
       ? `${state.root_research}\n${findings}` : findings;
-  } else {
-    const node = state.nodes[id];
-    if (!node || node.type !== 'problem')
-      return fail(`No sub-problem "${id}". Declare it with solve_problem first.`);
-    if (node.status === 'blocked') return fail(`Problem ${id} is already blocked.`);
-    node.research_text = node.research_text
-      ? `${node.research_text}\n${findings}` : findings;
-    node.status = 'researched';
+    save(state);
+    return ok('Research recorded.', state);
   }
+
+  const state = load();
+  if (!state) return fail('No active solve session. Call solve_problem (root) first.');
+  if (state.status !== 'solving') return fail(`Solve is already ${state.status}.`);
+
+  const node = state.nodes[id];
+  if (!node || node.type !== 'problem')
+    return fail(`No sub-problem "${id}". Declare it with solve_problem first.`);
+  if (node.status === 'blocked') return fail(`Problem ${id} is already blocked.`);
+  node.research_text = node.research_text
+    ? `${node.research_text}\n${findings}` : findings;
+  node.status = 'researched';
 
   save(state);
   return ok('Research recorded.', state);
