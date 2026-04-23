@@ -11,7 +11,7 @@ SOLVE_ID=$(cut -d' ' -f1 < "$TREE_POINTER")
 TREE_FILE="${PWD}/.claude/solve_tree_${SOLVE_ID}.json"
 [ ! -f "$TREE_FILE" ] && exit 0
 
-RESULT=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/solve-tree.js" validate "$SOLVE_ID" "$PWD" 2>&1)
+RESULT=$(node "${CLAUDE_PLUGIN_ROOT}/dist/solve-cli.cjs" validate "$SOLVE_ID" "$PWD" 2>&1)
 if [ $? -ne 0 ]; then
   jq -n --arg msg "$RESULT" '{"decision":"block","reason":$msg}'
 fi

@@ -4,13 +4,16 @@ import { mkdirSync } from 'fs';
 
 mkdirSync('dist', { recursive: true });
 
-await build({
-	entryPoints: ['src/solve-mcp.ts'],
+const shared = {
 	bundle: true,
 	platform: 'node',
 	format: 'cjs',
-	outfile: 'dist/solve-mcp.cjs',
-	banner: { js: '#!/usr/bin/env node' }
-});
+	banner: { js: '#!/usr/bin/env node' },
+};
 
-console.log('Build complete → dist/solve-mcp.cjs');
+await Promise.all([
+	build({ ...shared, entryPoints: ['src/solve-mcp.ts'],  outfile: 'dist/solve-mcp.cjs' }),
+	build({ ...shared, entryPoints: ['src/solve-cli.ts'],  outfile: 'dist/solve-cli.cjs' }),
+]);
+
+console.log('Build complete → dist/solve-mcp.cjs, dist/solve-cli.cjs');

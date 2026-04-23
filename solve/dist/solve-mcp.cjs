@@ -20832,6 +20832,17 @@ var fs = __toESM(require("fs"), 1);
 var path = __toESM(require("path"), 1);
 var http = __toESM(require("http"), 1);
 var import_child_process = require("child_process");
+
+// src/state.ts
+var treeFilename = (id) => `solve_tree_${id}.json`;
+function isSettled(sol, nodes) {
+  if (sol.status === "resolved" || sol.status === "failed") return true;
+  return Object.values(nodes).some(
+    (n) => n.type === "problem" && n.parent_solution === sol.id && n.status === "blocked"
+  );
+}
+
+// src/solve-mcp.ts
 var VIZ_PORT = 7337;
 var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT ?? "";
 var PLUGIN_DATA = process.env.CLAUDE_PLUGIN_DATA ?? "";
@@ -20874,7 +20885,7 @@ function getSolveId() {
 }
 function getTreeFile(solveId) {
   const id = solveId ?? getSolveId();
-  return id ? path.join(CLAUDE_DIR, `solve_tree_${id}.json`) : null;
+  return id ? path.join(CLAUDE_DIR, treeFilename(id)) : null;
 }
 function load() {
   const f = getTreeFile();
@@ -20888,7 +20899,8 @@ function save(state) {
 }
 async function createSession() {
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
-  const solveId = `${Date.now()}`;
+  const now = Date.now();
+  const solveId = `${now}`;
   const state = {
     session_id: solveId,
     cwd: PROJECT_DIR,
@@ -20899,9 +20911,9 @@ async function createSession() {
     selected_id: null,
     compare_text: null,
     blocked_text: null,
-    updated_at: Date.now() / 1e3
+    updated_at: now / 1e3
   };
-  const treeFile = path.join(CLAUDE_DIR, `solve_tree_${solveId}.json`);
+  const treeFile = path.join(CLAUDE_DIR, treeFilename(solveId));
   fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
   fs.writeFileSync(POINTER_FILE, solveId + "\n");
   ensureVizServer();
@@ -20911,12 +20923,6 @@ async function loadOrCreate() {
   const existing = load();
   if (existing && existing.status === "solving") return existing;
   return createSession();
-}
-function isSettled(sol, nodes) {
-  if (sol.status === "resolved" || sol.status === "failed") return true;
-  return Object.values(nodes).some(
-    (n) => n.type === "problem" && n.parent_solution === sol.id && n.status === "blocked"
-  );
 }
 function renderTree(state) {
   const { nodes, root_problem, status } = state;

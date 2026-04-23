@@ -9,6 +9,7 @@ import * as path          from 'path';
 import * as http          from 'http';
 import { spawn }          from 'child_process';
 import type { SolveState, SolveNode, SolutionNode, ProblemNode } from './types.js';
+import { isSettled, treeFilename } from './state.js';
 
 // ── Visualisation server ───────────────────────────────────────────────────────
 
@@ -56,7 +57,7 @@ function getSolveId(): string | null {
 
 function getTreeFile(solveId?: string): string | null {
   const id = solveId ?? getSolveId();
-  return id ? path.join(CLAUDE_DIR, `solve_tree_${id}.json`) : null;
+  return id ? path.join(CLAUDE_DIR, treeFilename(id)) : null;
 }
 
 function load(): SolveState | null {
@@ -74,7 +75,8 @@ function save(state: SolveState): void {
 /** Create a fresh solve session and make it current. Returns the new state. */
 async function createSession(): Promise<SolveState> {
   fs.mkdirSync(CLAUDE_DIR, { recursive: true });
-  const solveId = `${Date.now()}`;
+  const now     = Date.now();
+  const solveId = `${now}`;
   const state: SolveState = {
     session_id:       solveId,
     cwd:              PROJECT_DIR,
@@ -85,9 +87,9 @@ async function createSession(): Promise<SolveState> {
     selected_id:      null,
     compare_text:     null,
     blocked_text:     null,
-    updated_at:       Date.now() / 1000,
+    updated_at:       now / 1000,
   };
-  const treeFile = path.join(CLAUDE_DIR, `solve_tree_${solveId}.json`);
+  const treeFile = path.join(CLAUDE_DIR, treeFilename(solveId));
   fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
   fs.writeFileSync(POINTER_FILE, solveId + '\n');
   ensureVizServer(); // fire-and-forget
@@ -105,13 +107,6 @@ async function loadOrCreate(): Promise<SolveState> {
 }
 
 // ── Tree renderer ──────────────────────────────────────────────────────────────
-
-function isSettled(sol: SolutionNode, nodes: Record<string, SolveNode>): boolean {
-  if (sol.status === 'resolved' || sol.status === 'failed') return true;
-  return Object.values(nodes).some(
-    n => n.type === 'problem' && n.parent_solution === sol.id && n.status === 'blocked',
-  );
-}
 
 function renderTree(state: SolveState): string {
   const { nodes, root_problem, status } = state;

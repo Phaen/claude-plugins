@@ -10,9 +10,8 @@ SOLVE_ID=$(cut -d' ' -f1 < "$TREE_POINTER")
 TREE_FILE="${PWD}/.claude/solve_tree_${SOLVE_ID}.json"
 [ ! -f "$TREE_FILE" ] && exit 0
 
-STATUS=$(jq -r '.status // ""' "$TREE_FILE" 2>/dev/null)
-[ "$STATUS" != "solving" ] && exit 0
+RESULT=$(node "${CLAUDE_PLUGIN_ROOT}/dist/solve-cli.cjs" validate "$SOLVE_ID" "$PWD" 2>&1)
+[ $? -eq 0 ] && exit 0
 
-RESULT=$(node "${CLAUDE_PLUGIN_ROOT}/scripts/solve-tree.js" validate "$SOLVE_ID" "$PWD" 2>&1)
 jq -n --arg msg "EDIT BLOCKED — solve tree incomplete. $RESULT" \
   '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":$msg}}'
