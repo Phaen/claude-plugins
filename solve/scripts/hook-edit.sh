@@ -1,11 +1,10 @@
 #!/usr/bin/env bash
 # PreToolUse: Edit, Write, MultiEdit — block edits while solve is active.
 
-INPUT=$(cat)
-SESSION=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null)
-[ -z "$SESSION" ] && exit 0
+TREE_POINTER="${PWD}/.claude/solve_current"
+[ ! -f "$TREE_POINTER" ] && exit 0
 
-SOLVE_ID=$(node -e "const fs=require('fs');try{const r=JSON.parse(fs.readFileSync(process.env.CLAUDE_PLUGIN_DATA+'/solve_sessions.json','utf8'));const m=r.filter(s=>s.session_id===process.argv[1]).pop();if(m)process.stdout.write(m.solve_id);}catch{}" "$SESSION" 2>/dev/null)
+SOLVE_ID=$(cut -d' ' -f1 < "$TREE_POINTER")
 [ -z "$SOLVE_ID" ] && exit 0
 
 TREE_FILE="${PWD}/.claude/solve_tree_${SOLVE_ID}.json"

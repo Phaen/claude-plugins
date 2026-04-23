@@ -76,7 +76,7 @@ if (mode === 'validate') {
   const msg = [
     `Open solutions: ${open || 'none declared'}.`,
     `\nCurrent tree:\n${treeLines}`,
-    `\nUse the solve MCP tools to continue: solve_declare, solve_investigate, solve_resolve, or solve_block.`,
+    `\nUse the solve MCP tools to continue: solve_declare, solve_research, solve_resolve, or solve_block.`,
   ].join('\n');
 
   process.stdout.write(msg + '\n');
