@@ -10,10 +10,10 @@ return {
 	assets: new Set([]),
 	mimeTypes: {},
 	_: {
-		client: {start:"_app/immutable/entry/start.91QIUF8-.js",app:"_app/immutable/entry/app.CD1iFnyj.js",imports:["_app/immutable/entry/start.91QIUF8-.js","_app/immutable/chunks/C8eVzhrv.js","_app/immutable/chunks/CNkmkiBM.js","_app/immutable/entry/app.CD1iFnyj.js","_app/immutable/chunks/CNkmkiBM.js","_app/immutable/chunks/Dj6f-nJM.js","_app/immutable/chunks/DEDqjojZ.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
+		client: {start:"_app/immutable/entry/start.CVdrM6_7.js",app:"_app/immutable/entry/app.DRLtrn2H.js",imports:["_app/immutable/entry/start.CVdrM6_7.js","_app/immutable/chunks/DPswq9oq.js","_app/immutable/chunks/CNkmkiBM.js","_app/immutable/entry/app.DRLtrn2H.js","_app/immutable/chunks/CNkmkiBM.js","_app/immutable/chunks/Dj6f-nJM.js","_app/immutable/chunks/DEDqjojZ.js"],stylesheets:[],fonts:[],uses_env_dynamic_public:false},
 		nodes: [
 			__memo(() => import('./chunks/0-BisE7eWY.js')),
-			__memo(() => import('./chunks/1-BcFxVaY2.js')),
+			__memo(() => import('./chunks/1-m9cGzqnY.js')),
 			__memo(() => import('./chunks/2-ZsXrTp8k.js'))
 		],
 		remotes: {
@@ -32,7 +32,7 @@ return {
 				pattern: /^\/events\/?$/,
 				params: [],
 				page: null,
-				endpoint: __memo(() => import('./chunks/_server.ts-Dp7jNOae.js'))
+				endpoint: __memo(() => import('./chunks/_server.ts-BfFR65gK.js'))
 			},
 			{
 				id: "/session/[id]",

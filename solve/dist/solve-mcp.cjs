@@ -20930,9 +20930,30 @@ async function createSession() {
   ensureVizServer();
   return state;
 }
+function ensureRegistered(state) {
+  let sessions = [];
+  try {
+    sessions = JSON.parse(fs.readFileSync(REGISTRY_FILE, "utf8"));
+  } catch {
+  }
+  if (!sessions.find((s) => s.solve_id === state.session_id)) {
+    sessions.push({
+      solve_id: state.session_id,
+      session_id: state.session_id,
+      project_path: PROJECT_DIR,
+      project_name: path.basename(PROJECT_DIR),
+      started_at: state.updated_at
+    });
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(REGISTRY_FILE, JSON.stringify(sessions, null, 2));
+  }
+}
 async function loadOrCreate() {
   const existing = load();
-  if (existing && existing.status === "solving") return existing;
+  if (existing && existing.status === "solving") {
+    ensureRegistered(existing);
+    return existing;
+  }
   return createSession();
 }
 function renderTree(state) {

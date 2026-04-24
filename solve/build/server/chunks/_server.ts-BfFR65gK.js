@@ -1,4 +1,4 @@
-import { b as buildPayload, u as unsubscribe, s as subscribe } from './state-BRDE0lKF.js';
+import { b as buildPayload, s as subscribe, u as unsubscribe } from './state-BRDE0lKF.js';
 import 'fs';
 import 'path';
 import 'os';
@@ -6,6 +6,7 @@ import 'os';
 //#region src/routes/events/+server.ts
 function GET() {
 	const encoder = new TextEncoder();
+	let cleanupFn;
 	const stream = new ReadableStream({
 		start(controller) {
 			controller.enqueue(encoder.encode(": connected\n\n"));
@@ -14,26 +15,24 @@ function GET() {
 				try {
 					controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 				} catch {
-					cleanup();
+					cleanupFn?.();
 				}
 			};
 			const keepalive = setInterval(() => {
 				try {
 					controller.enqueue(encoder.encode(": keepalive\n\n"));
 				} catch {
-					cleanup();
+					cleanupFn?.();
 				}
 			}, 15e3);
-			function cleanup() {
+			cleanupFn = () => {
 				clearInterval(keepalive);
 				unsubscribe(onData);
-			}
+			};
 			subscribe(onData);
-			stream.__cleanup = cleanup;
 		},
 		cancel() {
-			const cleanup = stream.__cleanup;
-			if (cleanup) cleanup();
+			cleanupFn?.();
 		}
 	});
 	return new Response(stream, { headers: {
@@ -45,4 +44,4 @@ function GET() {
 }
 
 export { GET };
-//# sourceMappingURL=_server.ts-Dp7jNOae.js.map
+//# sourceMappingURL=_server.ts-BfFR65gK.js.map

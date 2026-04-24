@@ -107,13 +107,33 @@ async function createSession(): Promise<SolveState> {
   return state;
 }
 
+/** Ensure the session is present in the shared registry the viz server polls. */
+function ensureRegistered(state: SolveState): void {
+  let sessions: Session[] = [];
+  try { sessions = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf8')); } catch {}
+  if (!sessions.find(s => s.solve_id === state.session_id)) {
+    sessions.push({
+      solve_id:     state.session_id,
+      session_id:   state.session_id,
+      project_path: PROJECT_DIR,
+      project_name: path.basename(PROJECT_DIR),
+      started_at:   state.updated_at,
+    });
+    fs.mkdirSync(DATA_DIR, { recursive: true });
+    fs.writeFileSync(REGISTRY_FILE, JSON.stringify(sessions, null, 2));
+  }
+}
+
 /**
  * Load the current session if it is still solving, or create a fresh one if
  * there is none or the previous one is already finished.
  */
 async function loadOrCreate(): Promise<SolveState> {
   const existing = load();
-  if (existing && existing.status === 'solving') return existing;
+  if (existing && existing.status === 'solving') {
+    ensureRegistered(existing);
+    return existing;
+  }
   return createSession();
 }
 

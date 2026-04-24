@@ -2,6 +2,7 @@ import { buildPayload, subscribe, unsubscribe } from '$lib/server/state.js';
 
 export function GET() {
 	const encoder = new TextEncoder();
+	let cleanupFn: (() => void) | undefined;
 
 	const stream = new ReadableStream({
 		start(controller) {
@@ -12,7 +13,7 @@ export function GET() {
 				try {
 					controller.enqueue(encoder.encode(`data: ${JSON.stringify(data)}\n\n`));
 				} catch {
-					cleanup();
+					cleanupFn?.();
 				}
 			};
 
@@ -20,23 +21,19 @@ export function GET() {
 				try {
 					controller.enqueue(encoder.encode(': keepalive\n\n'));
 				} catch {
-					cleanup();
+					cleanupFn?.();
 				}
 			}, 15000);
 
-			function cleanup() {
+			cleanupFn = () => {
 				clearInterval(keepalive);
 				unsubscribe(onData);
-			}
+			};
 
 			subscribe(onData);
-
-			// Store cleanup for cancel
-			(stream as unknown as Record<string, () => void>).__cleanup = cleanup;
 		},
 		cancel() {
-			const cleanup = (stream as unknown as Record<string, () => void>).__cleanup;
-			if (cleanup) cleanup();
+			cleanupFn?.();
 		}
 	});
 
