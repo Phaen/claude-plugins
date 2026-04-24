@@ -130,7 +130,7 @@ function _page($$renderer, $$props) {
 		const activeSession = derived(() => allSessions.find((s) => s.solve_id === currentId) ?? null);
 		const activeState = derived(() => activeSession()?.state ?? null);
 		const topSolutions = derived(() => activeState() ? Object.values(activeState().nodes).filter((n) => n.type === "solution" && !n.parent_problem).sort((a, b) => a.id.localeCompare(b.id, void 0, { numeric: true })) : []);
-		$$renderer.push(`<div class="shell svelte-1uha8ag"><header class="svelte-1uha8ag"><span class="logo svelte-1uha8ag">⬡ Solve</span> <div class="sessions svelte-1uha8ag"><!--[-->`);
+		$$renderer.push(`<div class="shell svelte-1uha8ag"><header class="svelte-1uha8ag"><span class="logo svelte-1uha8ag"><img src="/logo.svg" width="14" height="14" alt="" style="display:inline-block;vertical-align:middle;margin-right:5px;margin-bottom:1px"/>Solve</span> <div class="sessions svelte-1uha8ag"><!--[-->`);
 		const each_array = ensure_array_like(allSessions);
 		for (let $$index = 0, $$length = each_array.length; $$index < $$length; $$index++) {
 			let session = each_array[$$index];
@@ -181,4 +181,4 @@ function _page($$renderer, $$props) {
 }
 
 export { _page as default };
-//# sourceMappingURL=_page.svelte-mi0ED926.js.map
+//# sourceMappingURL=_page.svelte-bdXTbIwe.js.map

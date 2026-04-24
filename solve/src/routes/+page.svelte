@@ -61,7 +61,9 @@
 
 <div class="shell">
 	<header>
-		<span class="logo">&#x2b21; Solve</span>
+		<span class="logo">
+			<img src="/logo.svg" width="14" height="14" alt="" style="display:inline-block;vertical-align:middle;margin-right:5px;margin-bottom:1px" />Solve
+		</span>
 		<div class="sessions">
 			{#each allSessions as session (session.solve_id)}
 				<SessionTab

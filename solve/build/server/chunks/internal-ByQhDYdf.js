@@ -1751,10 +1751,10 @@ var options = {
 	service_worker_options: void 0,
 	server_error_boundaries: false,
 	templates: {
-		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"en\">\n	<head>\n		<meta charset=\"utf-8\" />\n		<title>Solve</title>\n		" + head + "\n	</head>\n	<body>\n		<div style=\"display: contents\">" + body + "</div>\n	</body>\n</html>\n",
+		app: ({ head, body, assets, nonce, env }) => "<!doctype html>\n<html lang=\"en\">\n	<head>\n		<meta charset=\"utf-8\" />\n		<title>Solve</title>\n		<link rel=\"icon\" type=\"image/svg+xml\" href=\"/logo.svg\" />\n		" + head + "\n	</head>\n	<body>\n		<div style=\"display: contents\">" + body + "</div>\n	</body>\n</html>\n",
 		error: ({ status, message }) => "<!doctype html>\n<html lang=\"en\">\n	<head>\n		<meta charset=\"utf-8\" />\n		<title>" + message + "</title>\n\n		<style>\n			body {\n				--bg: white;\n				--fg: #222;\n				--divider: #ccc;\n				background: var(--bg);\n				color: var(--fg);\n				font-family:\n					system-ui,\n					-apple-system,\n					BlinkMacSystemFont,\n					'Segoe UI',\n					Roboto,\n					Oxygen,\n					Ubuntu,\n					Cantarell,\n					'Open Sans',\n					'Helvetica Neue',\n					sans-serif;\n				display: flex;\n				align-items: center;\n				justify-content: center;\n				height: 100vh;\n				margin: 0;\n			}\n\n			.error {\n				display: flex;\n				align-items: center;\n				max-width: 32rem;\n				margin: 0 1rem;\n			}\n\n			.status {\n				font-weight: 200;\n				font-size: 3rem;\n				line-height: 1;\n				position: relative;\n				top: -0.05rem;\n			}\n\n			.message {\n				border-left: 1px solid var(--divider);\n				padding: 0 0 0 1rem;\n				margin: 0 0 0 1rem;\n				min-height: 2.5rem;\n				display: flex;\n				align-items: center;\n			}\n\n			.message h1 {\n				font-weight: 400;\n				font-size: 1em;\n				margin: 0;\n			}\n\n			@media (prefers-color-scheme: dark) {\n				body {\n					--bg: #222;\n					--fg: #ddd;\n					--divider: #666;\n				}\n			}\n		</style>\n	</head>\n	<body>\n		<div class=\"error\">\n			<span class=\"status\">" + status + "</span>\n			<div class=\"message\">\n				<h1>" + message + "</h1>\n			</div>\n		</div>\n	</body>\n</html>\n"
 	},
-	version_hash: "u5wj94"
+	version_hash: "sq4454"
 };
 async function get_hooks() {
 	let handle;
@@ -1776,4 +1776,4 @@ async function get_hooks() {
 }
 
 export { text_encoder as A, compact as B, once as C, normalize_error as D, resolve as E, parse_remote_arg as F, stringify as G, make_trackable as H, INVALIDATED_PARAM as I, stringify$1 as J, read_implementation as K, split_remote_key as L, get_relative_path as M, base64_encode as N, set_read_implementation as O, TRAILING_SLASH_PARAM as T, get_message as a, get_hooks as b, coalesce_to_error as c, has_data_suffix as d, strip_data_suffix as e, decode_pathname as f, get_status as g, has_resolution_suffix as h, add_data_suffix as i, add_resolution_suffix as j, find_route as k, normalize_path as l, disable_search as m, noop as n, options as o, parse as p, validate_layout_exports as q, validate_page_server_exports as r, strip_resolution_suffix as s, text_decoder as t, validate_page_exports as u, validate_layout_server_exports as v, with_request_store as w, noop_span as x, create_remote_key as y, hash as z };
-//# sourceMappingURL=internal-Dokh-YP5.js.map
+//# sourceMappingURL=internal-ByQhDYdf.js.map
