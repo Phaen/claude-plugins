@@ -1,7 +1,7 @@
 {
   "name": "solve",
   "description": "Structured problem-solving with an explicit solution tree and real-time visualisation. Forces investigation of the problem and research of all solutions before any file edits, and shows a live tree UI at localhost:7337.",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "author": {
     "name": "Pablo Kebees",
     "url": "https://github.com/Phaen"

@@ -29,4 +29,4 @@ A Claude Code plugin that enforces structured problem-solving before any file ed
 
 ## Updating the version
 
-Bump `"version"` in `.claude-plugin/plugin.json` and rebuild with `npm run build:mcp`.
+Bump `"version"` in `.claude-plugin/plugin.json` and rebuild with `npm run build`.

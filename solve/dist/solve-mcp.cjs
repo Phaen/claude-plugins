@@ -20830,6 +20830,7 @@ var StdioServerTransport = class {
 // src/solve-mcp.ts
 var fs = __toESM(require("fs"), 1);
 var path = __toESM(require("path"), 1);
+var os = __toESM(require("os"), 1);
 var http = __toESM(require("http"), 1);
 var import_child_process = require("child_process");
 
@@ -20846,6 +20847,8 @@ function isSettled(sol, nodes) {
 var VIZ_PORT = 7337;
 var PLUGIN_ROOT = process.env.CLAUDE_PLUGIN_ROOT ?? "";
 var PLUGIN_DATA = process.env.CLAUDE_PLUGIN_DATA ?? "";
+var DATA_DIR = PLUGIN_DATA || path.join(os.homedir(), ".claude");
+var REGISTRY_FILE = path.join(DATA_DIR, "solve_sessions.json");
 function isVizRunning() {
   return new Promise((resolve) => {
     const req = http.get(`http://localhost:${VIZ_PORT}/state`, (res) => {
@@ -20916,6 +20919,14 @@ async function createSession() {
   const treeFile = path.join(CLAUDE_DIR, treeFilename(solveId));
   fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
   fs.writeFileSync(POINTER_FILE, solveId + "\n");
+  let sessions = [];
+  try {
+    sessions = JSON.parse(fs.readFileSync(REGISTRY_FILE, "utf8"));
+  } catch {
+  }
+  sessions.push({ solve_id: solveId, session_id: solveId, project_path: PROJECT_DIR, project_name: path.basename(PROJECT_DIR), started_at: now });
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(REGISTRY_FILE, JSON.stringify(sessions, null, 2));
   ensureVizServer();
   return state;
 }

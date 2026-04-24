@@ -6,9 +6,10 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import * as fs            from 'fs';
 import * as path          from 'path';
+import * as os            from 'os';
 import * as http          from 'http';
 import { spawn }          from 'child_process';
-import type { SolveState, SolveNode, SolutionNode, ProblemNode } from './types.js';
+import type { SolveState, SolveNode, SolutionNode, ProblemNode, Session } from './types.js';
 import { isSettled, treeFilename } from './state.js';
 
 // ── Visualisation server ───────────────────────────────────────────────────────
@@ -16,6 +17,8 @@ import { isSettled, treeFilename } from './state.js';
 const VIZ_PORT        = 7337;
 const PLUGIN_ROOT     = process.env.CLAUDE_PLUGIN_ROOT ?? '';
 const PLUGIN_DATA     = process.env.CLAUDE_PLUGIN_DATA ?? '';
+const DATA_DIR        = PLUGIN_DATA || path.join(os.homedir(), '.claude');
+const REGISTRY_FILE   = path.join(DATA_DIR, 'solve_sessions.json');
 
 function isVizRunning(): Promise<boolean> {
   return new Promise(resolve => {
@@ -92,6 +95,14 @@ async function createSession(): Promise<SolveState> {
   const treeFile = path.join(CLAUDE_DIR, treeFilename(solveId));
   fs.writeFileSync(treeFile, JSON.stringify(state, null, 2));
   fs.writeFileSync(POINTER_FILE, solveId + '\n');
+
+  // Register session so the viz server can find it
+  let sessions: Session[] = [];
+  try { sessions = JSON.parse(fs.readFileSync(REGISTRY_FILE, 'utf8')); } catch {}
+  sessions.push({ solve_id: solveId, session_id: solveId, project_path: PROJECT_DIR, project_name: path.basename(PROJECT_DIR), started_at: now });
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+  fs.writeFileSync(REGISTRY_FILE, JSON.stringify(sessions, null, 2));
+
   ensureVizServer(); // fire-and-forget
   return state;
 }
