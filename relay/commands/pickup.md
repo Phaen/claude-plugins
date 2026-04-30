@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read(**/.claude/session-relay-*.md), Read(*.jsonl), Glob(**/.claude/session-relay-*.md)
+allowed-tools: Read(/.claude/session-relay-*.md), Read(*.jsonl), Glob(/.claude/session-relay-*.md)
 ---
 
 # Pickup Session Relay
