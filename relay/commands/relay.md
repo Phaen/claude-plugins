@@ -1,5 +1,5 @@
 ---
-allowed-tools: Write(*/.claude/session-relay-*.md)
+allowed-tools: Write(**/.claude/session-relay-*.md)
 ---
 
 # Session Relay

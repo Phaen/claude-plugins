@@ -1,7 +1,7 @@
 {
   "name": "relay",
-  "description": "Session continuity — hand off context between sessions to split tasks, coordinate work, or resume later.",
-  "version": "1.0.0",
+  "description": "Session continuity — relay context between sessions to split tasks, coordinate work, or resume later.",
+  "version": "1.0.1",
   "author": {
     "name": "Pablo Kebees",
     "url": "https://github.com/Phaen"
