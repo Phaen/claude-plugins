@@ -1,7 +1,7 @@
 {
   "name": "relay",
   "description": "Session continuity — relay context between sessions to split tasks, coordinate work, or resume later.",
-  "version": "1.0.2",
+  "version": "1.1.1",
   "author": {
     "name": "Pablo Kebees",
     "url": "https://github.com/Phaen"
@@ -12,6 +12,7 @@
   "keywords": ["session", "relay", "continuity", "context"],
   "commands": [
     "./commands/relay.md",
-    "./commands/pickup.md"
+    "./commands/pickup.md",
+    "./commands/drop.md"
   ]
 }
