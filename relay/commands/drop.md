@@ -1,5 +1,5 @@
 ---
-allowed-tools: Glob(/.claude/session-relay-*.md) Bash(rm .claude/session-relay-*)
+allowed-tools: Glob(.claude/session-relay-*.md), Bash(rm .claude/session-relay-*:*)
 ---
 
 # Drop Session Relay
